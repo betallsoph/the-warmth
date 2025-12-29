@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import MapKit
 
 // MARK: - Tab Selection
 enum TabID: Hashable {
@@ -60,58 +61,207 @@ struct MainTabView: View {
 
 // MARK: - Placeholder Views
 struct MapViewPlaceholder: View {
+    // Camera position centered on Ho Chi Minh City
+    @State private var position = MapCameraPosition.region(
+        MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 10.7769, longitude: 106.7009),
+            span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08)
+        )
+    )
+    @State private var selectedCase: AlertCase?
+
     var body: some View {
-        ZStack {
-            Color(red: 0.98, green: 0.97, blue: 0.96)
-                .ignoresSafeArea()
-            
-            VStack(spacing: 24) {
-                Image(systemName: "map.fill")
-                    .font(.system(size: 70))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 1.0, green: 0.45, blue: 0.3),
-                                Color(red: 1.0, green: 0.55, blue: 0.4)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                
-                VStack(spacing: 10) {
-                    Text("Map View")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color(red: 0.3, green: 0.25, blue: 0.25))
-                    
-                    Text("Interactive map showing all active cases")
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
-                        .foregroundStyle(Color(red: 0.55, green: 0.5, blue: 0.5))
-                        .multilineTextAlignment(.center)
-                }
-                
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Image(systemName: "info.circle.fill")
-                            .foregroundStyle(Color(red: 1.0, green: 0.5, blue: 0.35))
-                        Text("Coming Soon")
-                            .font(.system(size: 17, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Color(red: 0.3, green: 0.25, blue: 0.25))
+        ZStack(alignment: .bottom) {
+            Map(position: $position) {
+                ForEach(AlertCase.mockCases) { alertCase in
+                    Annotation(
+                        alertCase.personName ?? "Unknown",
+                        coordinate: alertCase.location.coordinate
+                    ) {
+                        Button {
+                            withAnimation(.spring(duration: 0.3)) {
+                                if selectedCase?.id == alertCase.id {
+                                    selectedCase = nil
+                                } else {
+                                    selectedCase = alertCase
+                                }
+                            }
+                        } label: {
+                            CaseMarkerView(alertCase: alertCase, isSelected: selectedCase?.id == alertCase.id)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    
-                    Text("Map integration with real-time case markers and clustering")
-                        .font(.system(size: 14, design: .rounded))
-                        .foregroundStyle(Color(red: 0.55, green: 0.5, blue: 0.5))
+                    .annotationTitles(.hidden)
                 }
-                .padding(20)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(.white)
-                        .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 4)
-                }
-                .padding(.horizontal, 32)
             }
+            .mapStyle(.standard(pointsOfInterest: .excludingAll))
+            .mapControls {
+                MapUserLocationButton()
+                MapCompass()
+                MapScaleView()
+            }
+
+            // Selected case card
+            if let selectedCase {
+                SelectedCaseCard(alertCase: selectedCase) {
+                    withAnimation(.spring(duration: 0.3)) {
+                        self.selectedCase = nil
+                    }
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+            }
+        }
+    }
+}
+
+// MARK: - Case Marker View
+struct CaseMarkerView: View {
+    let alertCase: AlertCase
+    let isSelected: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Circle()
+                    .fill(urgencyColor.gradient)
+                    .frame(width: isSelected ? 44 : 36, height: isSelected ? 44 : 36)
+                    .shadow(color: urgencyColor.opacity(0.4), radius: isSelected ? 8 : 4, x: 0, y: 2)
+
+                Image(systemName: alertCase.needs.first?.icon ?? "person.fill")
+                    .font(.system(size: isSelected ? 20 : 16, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+
+            // Triangle pointer
+            Triangle()
+                .fill(urgencyColor.gradient)
+                .frame(width: 12, height: 8)
+                .offset(y: -1)
+        }
+        .scaleEffect(isSelected ? 1.1 : 1.0)
+        .animation(.spring(duration: 0.2), value: isSelected)
+    }
+
+    private var urgencyColor: Color {
+        switch alertCase.urgency {
+        case .critical: return Color(red: 1.0, green: 0.3, blue: 0.3)
+        case .high: return Color(red: 1.0, green: 0.5, blue: 0.2)
+        case .moderate: return Color(red: 1.0, green: 0.7, blue: 0.2)
+        case .low: return Color(red: 0.3, green: 0.6, blue: 1.0)
+        }
+    }
+}
+
+// MARK: - Triangle Shape
+struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.closeSubpath()
+        return path
+    }
+}
+
+// MARK: - Selected Case Card
+struct SelectedCaseCard: View {
+    let alertCase: AlertCase
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(alertCase.personName ?? "Anonymous")
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color(red: 0.2, green: 0.15, blue: 0.15))
+
+                    Text(alertCase.location.address)
+                        .font(.system(size: 13, design: .rounded))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                // Urgency badge
+                Text(alertCase.urgency.rawValue)
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background {
+                        Capsule()
+                            .fill(urgencyColor)
+                    }
+
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            // Description
+            Text(alertCase.description)
+                .font(.system(size: 14, design: .rounded))
+                .foregroundStyle(Color(red: 0.4, green: 0.35, blue: 0.35))
+                .lineLimit(2)
+
+            // Needs
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(alertCase.needs, id: \.self) { need in
+                        HStack(spacing: 5) {
+                            Image(systemName: need.icon)
+                                .font(.system(size: 11))
+                            Text(need.rawValue)
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                        }
+                        .foregroundStyle(Color(red: 0.5, green: 0.45, blue: 0.45))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background {
+                            Capsule()
+                                .fill(Color(red: 0.96, green: 0.95, blue: 0.94))
+                        }
+                    }
+                }
+            }
+
+            // Action button
+            Button(action: {}) {
+                HStack {
+                    Image(systemName: "hand.raised.fill")
+                    Text("Offer Help")
+                }
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color(red: 1.0, green: 0.5, blue: 0.35))
+                }
+            }
+        }
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
+        }
+    }
+
+    private var urgencyColor: Color {
+        switch alertCase.urgency {
+        case .critical: return Color(red: 1.0, green: 0.3, blue: 0.3)
+        case .high: return Color(red: 1.0, green: 0.5, blue: 0.2)
+        case .moderate: return Color(red: 1.0, green: 0.7, blue: 0.2)
+        case .low: return Color(red: 0.3, green: 0.6, blue: 1.0)
         }
     }
 }

@@ -1,7 +1,14 @@
 import Foundation
 import CoreLocation
 
-struct AlertCase: Identifiable, Codable {
+struct AlertCase: Identifiable, Codable, Hashable {
+    static func == (lhs: AlertCase, rhs: AlertCase) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
     let id: UUID
     let personName: String?
     let location: LocationData
