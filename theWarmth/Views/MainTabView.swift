@@ -7,45 +7,54 @@
 
 import SwiftUI
 
+// MARK: - Tab Selection
+enum TabID: Hashable {
+    case map
+    case cases
+    case profile
+    case add
+}
+
 struct MainTabView: View {
-    @State private var selectedTab = 0
-    
-    init() {
-        // Configure tab bar with standard UIKit API
-        let appearance = UITabBarAppearance()
-        appearance.configureWithDefaultBackground()
-        
-        UITabBar.appearance().standardAppearance = appearance
-        UITabBar.appearance().scrollEdgeAppearance = appearance
-    }
-    
+    @State private var selectedTab: TabID = .map
+    @State private var previousTab: TabID = .map
+    @State private var showCreateAlert = false
+
     var body: some View {
         TabView(selection: $selectedTab) {
-            MapViewPlaceholder()
-                .tabItem {
-                    Label("Map", systemImage: "map.fill")
-                }
-                .tag(0)
-            
-            AlertsListPlaceholder()
-                .tabItem {
-                    Label("Cases", systemImage: "list.bullet.rectangle.fill")
-                }
-                .tag(1)
-            
-            CreateAlertPlaceholder()
-                .tabItem {
-                    Label("Report", systemImage: "plus.circle.fill")
-                }
-                .tag(2)
-            
-            ProfilePlaceholder()
-                .tabItem {
-                    Label("Profile", systemImage: "person.fill")
-                }
-                .tag(3)
+            // Các tab chính - group bên trái
+            Tab("Map", systemImage: "map.fill", value: .map) {
+                MapViewPlaceholder()
+            }
+
+            Tab("Cases", systemImage: "list.bullet.rectangle.fill", value: .cases) {
+                AlertsListPlaceholder()
+            }
+
+            Tab("Profile", systemImage: "person.fill", value: .profile) {
+                ProfilePlaceholder()
+            }
+
+            // Nút + tách riêng bên phải (dùng role: .search để tách ra)
+            Tab("Add", systemImage: "plus", value: .add, role: .search) {
+                // Empty view - sẽ không bao giờ hiển thị vì ta intercept
+                Color.clear
+            }
         }
         .tint(Color(red: 1.0, green: 0.5, blue: 0.35))
+        .tabBarMinimizeBehavior(.onScrollDown)
+        .onChange(of: selectedTab) { oldValue, newValue in
+            if newValue == .add {
+                // Khi tap vào nút +, mở sheet thay vì navigate
+                showCreateAlert = true
+                // Quay về tab trước đó
+                selectedTab = oldValue
+            }
+            previousTab = oldValue
+        }
+        .sheet(isPresented: $showCreateAlert) {
+            CreateAlertPlaceholder()
+        }
     }
 }
 

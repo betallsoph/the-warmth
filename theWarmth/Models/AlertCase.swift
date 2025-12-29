@@ -137,9 +137,137 @@ extension AlertCase {
             reportedAt: Date().addingTimeInterval(-1800),
             status: .open,
             helpersAssigned: 0
+        ),
+        AlertCase(
+            id: UUID(),
+            personName: "Young man near bridge",
+            location: LocationData(
+                latitude: 10.7890,
+                longitude: 106.7100,
+                address: "Thu Thiem Bridge, District 2"
+            ),
+            needs: [.food, .water],
+            urgency: .moderate,
+            description: "Young man asking for help near the bridge. Seems disoriented.",
+            reportedBy: "Hoang Van E",
+            reportedAt: Date().addingTimeInterval(-14400),
+            status: .open,
+            helpersAssigned: 0
+        ),
+        AlertCase(
+            id: UUID(),
+            personName: "Elderly couple",
+            location: LocationData(
+                latitude: 10.7650,
+                longitude: 106.6780,
+                address: "Tao Dan Park, District 1"
+            ),
+            needs: [.medical, .food, .blanket],
+            urgency: .high,
+            description: "Elderly couple sleeping on bench. One appears to have breathing difficulties.",
+            reportedBy: "Nguyen Thi F",
+            reportedAt: Date().addingTimeInterval(-5400),
+            status: .inProgress,
+            helpersAssigned: 1
+        ),
+        AlertCase(
+            id: UUID(),
+            personName: "Woman with infant",
+            location: LocationData(
+                latitude: 10.7580,
+                longitude: 106.6890,
+                address: "District 10, near hospital"
+            ),
+            needs: [.food, .water, .clothing, .hygiene],
+            urgency: .critical,
+            description: "Young mother with infant. Baby needs formula and diapers urgently.",
+            reportedBy: "Tran Van G",
+            reportedAt: Date().addingTimeInterval(-900),
+            status: .open,
+            helpersAssigned: 0
+        ),
+        AlertCase(
+            id: UUID(),
+            personName: nil,
+            location: LocationData(
+                latitude: 10.7720,
+                longitude: 106.6950,
+                address: "Pham Ngu Lao Street, District 1"
+            ),
+            needs: [.shelter, .clothing],
+            urgency: .low,
+            description: "Person sheltering under awning. Relatively stable but needs long-term support.",
+            reportedBy: "Le Thi H",
+            reportedAt: Date().addingTimeInterval(-21600),
+            status: .open,
+            helpersAssigned: 0
+        ),
+        AlertCase(
+            id: UUID(),
+            personName: "Disabled veteran",
+            location: LocationData(
+                latitude: 10.7800,
+                longitude: 106.6920,
+                address: "September 23 Park, District 1"
+            ),
+            needs: [.medical, .food, .shelter],
+            urgency: .high,
+            description: "Veteran in wheelchair. Leg injury needs medical attention. Has been here for days.",
+            reportedBy: "Pham Van I",
+            reportedAt: Date().addingTimeInterval(-43200),
+            status: .inProgress,
+            helpersAssigned: 3
+        ),
+        AlertCase(
+            id: UUID(),
+            personName: "Teenage boy",
+            location: LocationData(
+                latitude: 10.7510,
+                longitude: 106.7050,
+                address: "District 4, near market"
+            ),
+            needs: [.food, .clothing, .shelter],
+            urgency: .high,
+            description: "Runaway teen, appears scared. Needs food and safe shelter.",
+            reportedBy: "Nguyen Van K",
+            reportedAt: Date().addingTimeInterval(-7200),
+            status: .open,
+            helpersAssigned: 0
+        ),
+        AlertCase(
+            id: UUID(),
+            personName: "Group of workers",
+            location: LocationData(
+                latitude: 10.7400,
+                longitude: 106.7200,
+                address: "Industrial area, District 7"
+            ),
+            needs: [.food, .water, .hygiene],
+            urgency: .moderate,
+            description: "Group of 5 migrant workers who lost jobs. Sharing temporary shelter but need food.",
+            reportedBy: "Tran Thi L",
+            reportedAt: Date().addingTimeInterval(-28800),
+            status: .inProgress,
+            helpersAssigned: 2
+        ),
+        AlertCase(
+            id: UUID(),
+            personName: "Elderly man with cane",
+            location: LocationData(
+                latitude: 10.7680,
+                longitude: 106.7080,
+                address: "Notre Dame Cathedral area"
+            ),
+            needs: [.food, .medical],
+            urgency: .moderate,
+            description: "Elderly man sitting near cathedral steps. Walking with difficulty.",
+            reportedBy: "Hoang Thi M",
+            reportedAt: Date().addingTimeInterval(-16200),
+            status: .open,
+            helpersAssigned: 1
         )
     ]
-    
+
     static var preview: AlertCase {
         mockCases[0]
     }
