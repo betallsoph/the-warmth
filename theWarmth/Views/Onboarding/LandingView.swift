@@ -2,7 +2,7 @@
 //  LandingView.swift
 //  TheWarmth
 //
-//  Main landing page with hero section and Liquid Glass design
+//  Main landing page with Liquid Glass design
 //
 
 import SwiftUI
@@ -10,8 +10,7 @@ import SwiftUI
 struct LandingView: View {
     @State private var isAnimating = false
     @State private var showMainApp = false
-    @Namespace private var namespace
-    
+
     var body: some View {
         if showMainApp {
             MainTabView()
@@ -21,31 +20,48 @@ struct LandingView: View {
                 ))
         } else {
             ZStack {
-                // Animated gradient background
-                AnimatedGradientBackground()
-                
+                // Clean neutral background
+                Color(white: 0.97)
+                    .ignoresSafeArea()
+
+                // Subtle depth blobs
+                GeometryReader { geo in
+                    Circle()
+                        .fill(Color(white: 0.88).opacity(0.6))
+                        .frame(width: 320, height: 320)
+                        .blur(radius: 80)
+                        .offset(x: geo.size.width * 0.5, y: -60)
+
+                    Circle()
+                        .fill(Color(white: 0.82).opacity(0.4))
+                        .frame(width: 260, height: 260)
+                        .blur(radius: 60)
+                        .offset(x: -60, y: geo.size.height * 0.6)
+                }
+                .ignoresSafeArea()
+
                 VStack(spacing: 0) {
                     Spacer()
-                    
-                    // Hero section
+
+                    // Hero
                     HeroSection(isAnimating: $isAnimating)
                         .padding(.horizontal, 24)
-                    
+
                     Spacer()
-                    
-                    // Stats section
+
+                    // Stats
                     StatsSection()
                         .padding(.horizontal, 24)
                         .opacity(isAnimating ? 1 : 0)
                         .offset(y: isAnimating ? 0 : 20)
                         .animation(.easeOut(duration: 0.8).delay(0.4), value: isAnimating)
-                    
+
                     Spacer()
-                    
-                    // CTA section
+
+                    // CTA
                     CTASection(showMainApp: $showMainApp)
                         .padding(.horizontal, 24)
-                        .padding(.bottom, 50)
+                        .padding(.bottom, 52)
                         .opacity(isAnimating ? 1 : 0)
                         .offset(y: isAnimating ? 0 : 30)
                         .animation(.easeOut(duration: 0.8).delay(0.6), value: isAnimating)
@@ -61,109 +77,49 @@ struct LandingView: View {
     }
 }
 
-// MARK: - Animated Gradient Background
-struct AnimatedGradientBackground: View {
-    @State private var animateGradient = false
-    
-    var body: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 1.0, green: 0.95, blue: 0.9),   // Soft peach
-                Color(red: 1.0, green: 0.92, blue: 0.85),  // Warm cream
-                Color(red: 0.98, green: 0.94, blue: 0.92)  // Light blush
-            ],
-            startPoint: animateGradient ? .topLeading : .top,
-            endPoint: animateGradient ? .bottomTrailing : .bottom
-        )
-        .ignoresSafeArea()
-        .onAppear {
-            withAnimation(.easeInOut(duration: 6.0).repeatForever(autoreverses: true)) {
-                animateGradient.toggle()
-            }
-        }
-    }
-}
-
 // MARK: - Hero Section
 struct HeroSection: View {
     @Binding var isAnimating: Bool
-    
+
     var body: some View {
-        VStack(spacing: 20) {
-            // App Icon with Glass Effect
+        VStack(spacing: 24) {
+            // Icon
             ZStack {
-                // Soft glow
                 Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                Color.orange.opacity(0.3),
-                                Color.orange.opacity(0.1),
-                                Color.clear
-                            ],
-                            center: .center,
-                            startRadius: 40,
-                            endRadius: 80
-                        )
-                    )
-                    .frame(width: 160, height: 160)
-                
-                ZStack {
-                    Image(systemName: "heart.circle.fill")
-                        .font(.system(size: 70))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 1.0, green: 0.45, blue: 0.3),
-                                    Color(red: 1.0, green: 0.55, blue: 0.4)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                }
-                .frame(width: 110, height: 110)
-                .background {
-                    Circle()
-                        .fill(.white)
-                        .shadow(color: .black.opacity(0.08), radius: 20, x: 0, y: 10)
-                }
+                    .fill(Color(white: 0.92))
+                    .frame(width: 120, height: 120)
+                    .shadow(color: .black.opacity(0.06), radius: 24, x: 0, y: 8)
+
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 52, weight: .medium))
+                    .foregroundStyle(.primary.opacity(0.75))
             }
             .scaleEffect(isAnimating ? 1 : 0.5)
             .opacity(isAnimating ? 1 : 0)
             .animation(.spring(response: 0.8, dampingFraction: 0.6).delay(0.1), value: isAnimating)
-            
+
             // Title
             VStack(spacing: 8) {
                 Text("The Warmth")
                     .font(.system(size: 44, weight: .bold, design: .rounded))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.3, green: 0.25, blue: 0.25),
-                                Color(red: 0.4, green: 0.35, blue: 0.35)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                
+                    .foregroundStyle(.primary)
+
                 Text("Bringing warmth to the streets")
                     .font(.system(size: 17, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color(red: 0.5, green: 0.45, blue: 0.45))
+                    .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
             .opacity(isAnimating ? 1 : 0)
             .offset(y: isAnimating ? 0 : 20)
             .animation(.easeOut(duration: 0.8).delay(0.2), value: isAnimating)
-            
+
             // Description
             Text("A community alert app for helping vulnerable neighbors. Spot and map those in need, turning compassion into immediate, dignified action.")
-                .font(.system(size: 15, weight: .regular, design: .rounded))
-                .foregroundStyle(Color(red: 0.55, green: 0.5, blue: 0.5))
+                .font(.system(size: 15, design: .rounded))
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 12)
                 .opacity(isAnimating ? 1 : 0)
                 .offset(y: isAnimating ? 0 : 20)
                 .animation(.easeOut(duration: 0.8).delay(0.3), value: isAnimating)
@@ -174,63 +130,55 @@ struct HeroSection: View {
 // MARK: - Stats Section
 struct StatsSection: View {
     var body: some View {
-        HStack(spacing: 16) {
-            StatCard(number: "247", label: "People Helped", icon: "person.2.fill")
-            StatCard(number: "89", label: "Active Cases", icon: "map.fill")
-            StatCard(number: "156", label: "Volunteers", icon: "hand.raised.fill")
+        GlassEffectContainer(spacing: 16) {
+            HStack(spacing: 1) {
+                StatItem(number: "247", label: "Helped", icon: "person.2.fill")
+                Divider()
+                    .frame(height: 36)
+                    .opacity(0.3)
+                StatItem(number: "89", label: "Cases", icon: "map.fill")
+                Divider()
+                    .frame(height: 36)
+                    .opacity(0.3)
+                StatItem(number: "156", label: "Volunteers", icon: "hand.raised.fill")
+            }
+            .padding(.vertical, 18)
+            .padding(.horizontal, 12)
+            .glassEffect(in: .rect(cornerRadius: 20))
         }
     }
 }
 
-struct StatCard: View {
+struct StatItem: View {
     let number: String
     let label: String
     let icon: String
-    
+
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 22, weight: .medium))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 1.0, green: 0.45, blue: 0.3),
-                            Color(red: 1.0, green: 0.55, blue: 0.4)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-            
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(.primary.opacity(0.6))
+
             Text(number)
-                .font(.system(size: 26, weight: .bold, design: .rounded))
-                .foregroundStyle(Color(red: 0.3, green: 0.25, blue: 0.25))
-            
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .foregroundStyle(.primary)
+
             Text(label)
                 .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundStyle(Color(red: 0.55, green: 0.5, blue: 0.5))
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 18)
-        .padding(.horizontal, 8)
-        .background {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.white)
-                .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 4)
-        }
     }
 }
 
 // MARK: - CTA Section
 struct CTASection: View {
     @Binding var showMainApp: Bool
-    
+    @State private var showHowItWorks = false
+
     var body: some View {
-        VStack(spacing: 14) {
-            // Primary CTA
+        VStack(spacing: 12) {
             Button {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
                     showMainApp = true
@@ -238,42 +186,97 @@ struct CTASection: View {
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "hand.raised.fill")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(size: 17, weight: .semibold))
                     Text("Start Helping Now")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                 }
-                .foregroundStyle(.white)
-                .padding(.horizontal, 28)
-                .padding(.vertical, 16)
                 .frame(maxWidth: .infinity)
-                .background {
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 1.0, green: 0.45, blue: 0.3),
-                                    Color(red: 1.0, green: 0.55, blue: 0.4)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .shadow(color: Color(red: 1.0, green: 0.5, blue: 0.35).opacity(0.3), radius: 12, x: 0, y: 6)
-                }
+                .padding(.vertical, 4)
             }
-            
-            // Secondary CTA
+            .buttonStyle(.glassProminent)
+
             Button {
-                // Learn more action
+                showHowItWorks = true
             } label: {
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     Image(systemName: "info.circle")
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.system(size: 14, weight: .medium))
                     Text("Learn How It Works")
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                 }
-                .foregroundStyle(Color(red: 0.5, green: 0.45, blue: 0.45))
-                .padding(.vertical, 12)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glass)
+            .sheet(isPresented: $showHowItWorks) {
+                HowItWorksView()
+            }
+        }
+    }
+}
+
+// MARK: - How It Works View
+struct HowItWorksView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private let steps: [(icon: String, title: String, description: String)] = [
+        ("eyes",           "Spot someone in need",   "See a homeless person, an elderly individual, or anyone who needs help on the street."),
+        ("mappin.and.ellipse", "Open the app",       "Tap the + button to start a new report. Your location is automatically detected."),
+        ("list.bullet.clipboard", "Describe the situation", "Add a brief description, select what they need — food, water, medical help — and set the urgency level."),
+        ("paperplane.fill", "Submit the alert",      "Your report is shared with nearby volunteers and organisations who can respond quickly."),
+        ("hand.raised.fill", "Help arrives",         "Volunteers see the case on the map and can offer help directly. You can track the status in real time.")
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+                        HStack(alignment: .top, spacing: 16) {
+                            // Step indicator
+                            VStack(spacing: 0) {
+                                ZStack {
+                                    Circle()
+                                        .fill(.quaternary)
+                                        .frame(width: 44, height: 44)
+                                    Image(systemName: step.icon)
+                                        .font(.system(size: 18, weight: .medium))
+                                        .foregroundStyle(.primary.opacity(0.7))
+                                }
+
+                                if index < steps.count - 1 {
+                                    Rectangle()
+                                        .fill(.quaternary)
+                                        .frame(width: 2, height: 32)
+                                }
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(step.title)
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(.primary)
+                                Text(step.description)
+                                    .font(.system(size: 14, design: .rounded))
+                                    .foregroundStyle(.secondary)
+                                    .lineSpacing(2)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(.top, 10)
+                            .padding(.bottom, index < steps.count - 1 ? 0 : 0)
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, index < steps.count - 1 ? 4 : 0)
+                    }
+                }
+                .padding(.vertical, 24)
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("How It Works")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
             }
         }
     }

@@ -10,27 +10,19 @@ import SwiftUI
 struct GlassButton: View {
     let title: String
     let icon: String?
-    let style: ButtonStyle
+    let style: ButtonVariant
     let action: () -> Void
-    
-    enum ButtonStyle {
+
+    enum ButtonVariant {
         case primary
         case secondary
         case destructive
-        
-        var tint: Color {
-            switch self {
-            case .primary: return .orange
-            case .secondary: return .blue
-            case .destructive: return .red
-            }
-        }
     }
-    
+
     init(
         _ title: String,
         icon: String? = nil,
-        style: ButtonStyle = .primary,
+        style: ButtonVariant = .primary,
         action: @escaping () -> Void
     ) {
         self.title = title
@@ -38,51 +30,43 @@ struct GlassButton: View {
         self.style = style
         self.action = action
     }
-    
+
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                if let icon = icon {
-                    Image(systemName: icon)
-                        .font(.system(size: 16, weight: .semibold))
-                }
-                Text(title)
-                    .font(.system(size: 17, weight: .semibold))
+        if style == .primary {
+            Button(action: action) {
+                buttonLabel
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 16)
-            .frame(maxWidth: .infinity)
-            .background {
-                Capsule()
-                    .fill(.ultraThinMaterial)
-                    .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+            .buttonStyle(.glassProminent)
+        } else {
+            Button(action: action) {
+                buttonLabel
             }
-            .tint(style.tint)
+            .buttonStyle(.glass)
         }
+    }
+
+    private var buttonLabel: some View {
+        HStack(spacing: 8) {
+            if let icon {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+            }
+            Text(title)
+                .font(.system(size: 17, weight: .semibold, design: .rounded))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 4)
     }
 }
 
 #Preview {
     ZStack {
-        LinearGradient(
-            colors: [.blue, .purple],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .ignoresSafeArea()
-        
-        VStack(spacing: 20) {
-            GlassButton("Get Started", icon: "hand.raised.fill", style: .primary) {
-                print("Tapped primary")
-            }
-            
-            GlassButton("Learn More", icon: "info.circle.fill", style: .secondary) {
-                print("Tapped secondary")
-            }
-            
-            GlassButton("Report", icon: "exclamationmark.triangle.fill", style: .destructive) {
-                print("Tapped destructive")
-            }
+        Color(.systemGroupedBackground)
+            .ignoresSafeArea()
+
+        VStack(spacing: 16) {
+            GlassButton("Start Helping", icon: "hand.raised.fill", style: .primary) {}
+            GlassButton("Learn More", icon: "info.circle", style: .secondary) {}
         }
         .padding()
     }

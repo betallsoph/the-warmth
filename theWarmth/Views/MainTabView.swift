@@ -8,6 +8,18 @@
 import SwiftUI
 import MapKit
 
+// MARK: - Urgency Color Helper
+extension AlertCase.Urgency {
+    var accentColor: Color {
+        switch self {
+        case .critical: return .red
+        case .high:     return Color(hue: 0.07, saturation: 0.85, brightness: 0.95)
+        case .moderate: return Color(hue: 0.13, saturation: 0.75, brightness: 0.95)
+        case .low:      return .blue
+        }
+    }
+}
+
 // MARK: - Tab Selection
 enum TabID: Hashable {
     case map
@@ -23,45 +35,38 @@ struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Các tab chính - group bên trái
             Tab("Map", systemImage: "map.fill", value: .map) {
-                MapViewPlaceholder()
+                MapView()
             }
 
             Tab("Cases", systemImage: "list.bullet.rectangle.fill", value: .cases) {
-                AlertsListPlaceholder()
+                AlertsListView()
             }
 
             Tab("Profile", systemImage: "person.fill", value: .profile) {
-                ProfilePlaceholder()
+                ProfileView()
             }
 
-            // Nút + tách riêng bên phải (dùng role: .search để tách ra)
             Tab("Add", systemImage: "plus", value: .add, role: .search) {
-                // Empty view - sẽ không bao giờ hiển thị vì ta intercept
                 Color.clear
             }
         }
-        .tint(Color(red: 1.0, green: 0.5, blue: 0.35))
         .tabBarMinimizeBehavior(.onScrollDown)
         .onChange(of: selectedTab) { oldValue, newValue in
             if newValue == .add {
-                // Khi tap vào nút +, mở sheet thay vì navigate
                 showCreateAlert = true
-                // Quay về tab trước đó
                 selectedTab = oldValue
             }
             previousTab = oldValue
         }
         .sheet(isPresented: $showCreateAlert) {
-            CreateAlertPlaceholder()
+            CreateAlertView()
         }
     }
 }
 
-// MARK: - Placeholder Views
-struct MapViewPlaceholder: View {
-    // Camera position centered on Ho Chi Minh City
+// MARK: - Map View
+struct MapView: View {
     @State private var position = MapCameraPosition.region(
         MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 10.7769, longitude: 106.7009),
@@ -69,6 +74,8 @@ struct MapViewPlaceholder: View {
         )
     )
     @State private var selectedCase: AlertCase?
+    @State private var showLocationDenied = false
+    @State private var selectedCaseForDetail: AlertCase?
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -80,14 +87,13 @@ struct MapViewPlaceholder: View {
                     ) {
                         Button {
                             withAnimation(.spring(duration: 0.3)) {
-                                if selectedCase?.id == alertCase.id {
-                                    selectedCase = nil
-                                } else {
-                                    selectedCase = alertCase
-                                }
+                                selectedCase = selectedCase?.id == alertCase.id ? nil : alertCase
                             }
                         } label: {
-                            CaseMarkerView(alertCase: alertCase, isSelected: selectedCase?.id == alertCase.id)
+                            CaseMarkerView(
+                                alertCase: alertCase,
+                                isSelected: selectedCase?.id == alertCase.id
+                            )
                         }
                         .buttonStyle(.plain)
                     }
@@ -100,18 +106,39 @@ struct MapViewPlaceholder: View {
                 MapCompass()
                 MapScaleView()
             }
+            .onMapCameraChange { _ in
+                // dismiss card when user pans away
+            }
 
-            // Selected case card
             if let selectedCase {
-                SelectedCaseCard(alertCase: selectedCase) {
-                    withAnimation(.spring(duration: 0.3)) {
-                        self.selectedCase = nil
+                SelectedCaseCard(
+                    alertCase: selectedCase,
+                    onDismiss: {
+                        withAnimation(.spring(duration: 0.3)) {
+                            self.selectedCase = nil
+                        }
+                    },
+                    onOfferHelp: {
+                        selectedCaseForDetail = selectedCase
                     }
-                }
+                )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .padding(.horizontal)
                 .padding(.bottom, 8)
             }
+        }
+        .alert("Location Access Denied", isPresented: $showLocationDenied) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Enable location in Settings to see cases near you.")
+        }
+        .sheet(item: $selectedCaseForDetail) { alertCase in
+            CaseDetailView(alertCase: alertCase)
         }
     }
 }
@@ -121,36 +148,32 @@ struct CaseMarkerView: View {
     let alertCase: AlertCase
     let isSelected: Bool
 
+    private var size: CGFloat { isSelected ? 44 : 34 }
+
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
                 Circle()
-                    .fill(urgencyColor.gradient)
-                    .frame(width: isSelected ? 44 : 36, height: isSelected ? 44 : 36)
-                    .shadow(color: urgencyColor.opacity(0.4), radius: isSelected ? 8 : 4, x: 0, y: 2)
+                    .fill(alertCase.urgency.accentColor)
+                    .frame(width: size, height: size)
+                    .shadow(
+                        color: alertCase.urgency.accentColor.opacity(0.35),
+                        radius: isSelected ? 10 : 4,
+                        x: 0, y: 3
+                    )
 
                 Image(systemName: alertCase.needs.first?.icon ?? "person.fill")
-                    .font(.system(size: isSelected ? 20 : 16, weight: .semibold))
+                    .font(.system(size: isSelected ? 20 : 15, weight: .semibold))
                     .foregroundStyle(.white)
             }
 
-            // Triangle pointer
             Triangle()
-                .fill(urgencyColor.gradient)
-                .frame(width: 12, height: 8)
+                .fill(alertCase.urgency.accentColor)
+                .frame(width: 10, height: 7)
                 .offset(y: -1)
         }
         .scaleEffect(isSelected ? 1.1 : 1.0)
         .animation(.spring(duration: 0.2), value: isSelected)
-    }
-
-    private var urgencyColor: Color {
-        switch alertCase.urgency {
-        case .critical: return Color(red: 1.0, green: 0.3, blue: 0.3)
-        case .high: return Color(red: 1.0, green: 0.5, blue: 0.2)
-        case .moderate: return Color(red: 1.0, green: 0.7, blue: 0.2)
-        case .low: return Color(red: 0.3, green: 0.6, blue: 1.0)
-        }
     }
 }
 
@@ -166,37 +189,33 @@ struct Triangle: Shape {
     }
 }
 
-// MARK: - Selected Case Card
+// MARK: - Selected Case Card (map pop-up)
 struct SelectedCaseCard: View {
     let alertCase: AlertCase
     let onDismiss: () -> Void
+    let onOfferHelp: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(alertCase.personName ?? "Anonymous")
                         .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Color(red: 0.2, green: 0.15, blue: 0.15))
+                        .foregroundStyle(.primary)
 
-                    Text(alertCase.location.address)
+                    Label(alertCase.location.address, systemImage: "mappin")
                         .font(.system(size: 13, design: .rounded))
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
-                // Urgency badge
                 Text(alertCase.urgency.rawValue)
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background {
-                        Capsule()
-                            .fill(urgencyColor)
-                    }
+                    .background(Capsule().fill(alertCase.urgency.accentColor))
 
                 Button(action: onDismiss) {
                     Image(systemName: "xmark.circle.fill")
@@ -205,355 +224,569 @@ struct SelectedCaseCard: View {
                 }
             }
 
-            // Description
             Text(alertCase.description)
                 .font(.system(size: 14, design: .rounded))
-                .foregroundStyle(Color(red: 0.4, green: 0.35, blue: 0.35))
+                .foregroundStyle(.secondary)
                 .lineLimit(2)
 
-            // Needs
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(alertCase.needs, id: \.self) { need in
                         HStack(spacing: 5) {
-                            Image(systemName: need.icon)
-                                .font(.system(size: 11))
-                            Text(need.rawValue)
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                            Image(systemName: need.icon).font(.system(size: 11))
+                            Text(need.rawValue).font(.system(size: 12, weight: .medium, design: .rounded))
                         }
-                        .foregroundStyle(Color(red: 0.5, green: 0.45, blue: 0.45))
+                        .foregroundStyle(.secondary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background {
-                            Capsule()
-                                .fill(Color(red: 0.96, green: 0.95, blue: 0.94))
-                        }
+                        .glassEffect(in: .capsule)
                     }
                 }
             }
 
-            // Action button
-            Button(action: {}) {
+            Button(action: onOfferHelp) {
                 HStack {
                     Image(systemName: "hand.raised.fill")
                     Text("Offer Help")
                 }
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color(red: 1.0, green: 0.5, blue: 0.35))
-                }
+                .padding(.vertical, 4)
             }
+            .buttonStyle(.glassProminent)
         }
         .padding(16)
         .background {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(.ultraThinMaterial)
-                .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
-        }
-    }
-
-    private var urgencyColor: Color {
-        switch alertCase.urgency {
-        case .critical: return Color(red: 1.0, green: 0.3, blue: 0.3)
-        case .high: return Color(red: 1.0, green: 0.5, blue: 0.2)
-        case .moderate: return Color(red: 1.0, green: 0.7, blue: 0.2)
-        case .low: return Color(red: 0.3, green: 0.6, blue: 1.0)
+                .shadow(color: .black.opacity(0.08), radius: 20, x: 0, y: 10)
         }
     }
 }
 
-struct AlertsListPlaceholder: View {
+// MARK: - Case Detail View
+struct CaseDetailView: View {
+    let alertCase: AlertCase
+    @Environment(\.dismiss) private var dismiss
+    @State private var showOfferConfirmation = false
+
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color(red: 0.98, green: 0.97, blue: 0.96)
-                    .ignoresSafeArea()
-                
-                ScrollView {
-                    VStack(spacing: 14) {
-                        ForEach(AlertCase.mockCases) { alertCase in
-                            AlertCasePreviewCard(alertCase: alertCase)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+
+                    // Urgency banner
+                    HStack(spacing: 12) {
+                        Image(systemName: urgencyIcon)
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(alertCase.urgency.accentColor)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(alertCase.urgency.rawValue + " Priority")
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundStyle(alertCase.urgency.accentColor)
+                            Text(statusLabel)
+                                .font(.system(size: 13, design: .rounded))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        if alertCase.helpersAssigned > 0 {
+                            Label("\(alertCase.helpersAssigned) helping", systemImage: "person.2.fill")
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .foregroundStyle(.green)
                         }
                     }
-                    .padding()
+                    .padding(16)
+                    .background {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(alertCase.urgency.accentColor.opacity(0.08))
+                    }
+
+                    // Description
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("About this case")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
+                        Text(alertCase.description)
+                            .font(.system(size: 15, design: .rounded))
+                            .foregroundStyle(.primary)
+                            .lineSpacing(3)
+                    }
+
+                    // Needs
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Needs")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
+
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                            ForEach(alertCase.needs, id: \.self) { need in
+                                HStack(spacing: 8) {
+                                    Image(systemName: need.icon)
+                                        .font(.system(size: 14))
+                                        .foregroundStyle(alertCase.urgency.accentColor)
+                                    Text(need.rawValue)
+                                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                                        .foregroundStyle(.primary)
+                                    Spacer()
+                                }
+                                .padding(12)
+                                .background {
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                        .fill(.quaternary)
+                                }
+                            }
+                        }
+                    }
+
+                    // Location
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Location")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
+
+                        Map(initialPosition: .region(MKCoordinateRegion(
+                            center: alertCase.location.coordinate,
+                            span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                        ))) {
+                            Annotation("", coordinate: alertCase.location.coordinate) {
+                                Circle()
+                                    .fill(alertCase.urgency.accentColor)
+                                    .frame(width: 16, height: 16)
+                                    .shadow(color: alertCase.urgency.accentColor.opacity(0.4), radius: 6)
+                            }
+                        }
+                        .mapStyle(.standard(pointsOfInterest: .excludingAll))
+                        .frame(height: 160)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                        Label(alertCase.location.address, systemImage: "mappin.and.ellipse")
+                            .font(.system(size: 14, design: .rounded))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    // Meta
+                    HStack {
+                        Label(timeAgo(from: alertCase.reportedAt), systemImage: "clock")
+                        Spacer()
+                        Label("Reported by \(alertCase.reportedBy)", systemImage: "person")
+                    }
+                    .font(.system(size: 12, design: .rounded))
+                    .foregroundStyle(.tertiary)
+                }
+                .padding()
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle(alertCase.personName ?? "Anonymous")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
                 }
             }
+            .safeAreaInset(edge: .bottom) {
+                Button(action: { showOfferConfirmation = true }) {
+                    HStack {
+                        Image(systemName: "hand.raised.fill")
+                        Text("Offer Help")
+                    }
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.glassProminent)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 8)
+                .padding(.top, 8)
+            }
+            .alert("Thank you!", isPresented: $showOfferConfirmation) {
+                Button("OK") { dismiss() }
+            } message: {
+                Text("You've been added as a helper for this case. The reporter will be notified.")
+            }
+        }
+    }
+
+    private var urgencyIcon: String {
+        switch alertCase.urgency {
+        case .critical: return "exclamationmark.3"
+        case .high:     return "exclamationmark.2"
+        case .moderate: return "exclamationmark"
+        case .low:      return "info.circle"
+        }
+    }
+
+    private var statusLabel: String {
+        switch alertCase.status {
+        case .open:       return "Awaiting help"
+        case .inProgress: return "Help on the way"
+        case .resolved:   return "Resolved"
+        case .verified:   return "Verified & resolved"
+        }
+    }
+
+    private func timeAgo(from date: Date) -> String {
+        let seconds = Date().timeIntervalSince(date)
+        let minutes = Int(seconds / 60)
+        let hours = Int(seconds / 3600)
+        if hours > 0 { return "\(hours)h ago" }
+        if minutes > 0 { return "\(minutes)m ago" }
+        return "Just now"
+    }
+}
+
+// MARK: - Alerts List View
+struct AlertsListView: View {
+    @State private var selectedCase: AlertCase?
+    @State private var searchText = ""
+
+    private var filtered: [AlertCase] {
+        if searchText.isEmpty { return AlertCase.mockCases }
+        return AlertCase.mockCases.filter {
+            ($0.personName ?? "").localizedCaseInsensitiveContains(searchText) ||
+            $0.location.address.localizedCaseInsensitiveContains(searchText) ||
+            $0.description.localizedCaseInsensitiveContains(searchText)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 12) {
+                    ForEach(filtered) { alertCase in
+                        Button {
+                            selectedCase = alertCase
+                        } label: {
+                            AlertCaseCard(alertCase: alertCase)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding()
+            }
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("Active Cases")
             .navigationBarTitleDisplayMode(.large)
+            .searchable(text: $searchText, prompt: "Search cases")
+            .sheet(item: $selectedCase) { alertCase in
+                CaseDetailView(alertCase: alertCase)
+            }
         }
     }
 }
 
-struct AlertCasePreviewCard: View {
+struct AlertCaseCard: View {
     let alertCase: AlertCase
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Header
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(alertCase.personName ?? "Anonymous")
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Color(red: 0.3, green: 0.25, blue: 0.25))
-                    
-                    Text(alertCase.location.address)
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.primary)
+
+                    Label(alertCase.location.address, systemImage: "mappin")
                         .font(.system(size: 13, design: .rounded))
-                        .foregroundStyle(Color(red: 0.55, green: 0.5, blue: 0.5))
+                        .foregroundStyle(.secondary)
                 }
-                
+
                 Spacer()
-                
-                // Urgency badge
+
                 Text(alertCase.urgency.rawValue)
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
-                    .background {
-                        Capsule()
-                            .fill(urgencyColor(alertCase.urgency))
-                    }
+                    .background(Capsule().fill(alertCase.urgency.accentColor))
             }
-            
-            // Description
+
             Text(alertCase.description)
                 .font(.system(size: 14, design: .rounded))
-                .foregroundStyle(Color(red: 0.45, green: 0.4, blue: 0.4))
+                .foregroundStyle(.secondary)
                 .lineLimit(2)
-            
-            // Needs
+
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     ForEach(alertCase.needs, id: \.self) { need in
-                        HStack(spacing: 5) {
-                            Image(systemName: need.icon)
-                                .font(.system(size: 11))
-                            Text(need.rawValue)
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
-                        }
-                        .foregroundStyle(Color(red: 0.5, green: 0.45, blue: 0.45))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background {
-                            Capsule()
-                                .fill(Color(red: 0.96, green: 0.95, blue: 0.94))
-                        }
+                        Label(need.rawValue, systemImage: need.icon)
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(.quaternary))
                     }
                 }
             }
-            
-            // Footer
+
             HStack {
-                HStack(spacing: 4) {
-                    Image(systemName: "clock")
-                        .font(.system(size: 11))
-                    Text(timeAgo(from: alertCase.reportedAt))
-                        .font(.system(size: 12, design: .rounded))
-                }
-                .foregroundStyle(Color(red: 0.6, green: 0.55, blue: 0.55))
-                
+                Label(timeAgo(from: alertCase.reportedAt), systemImage: "clock")
+                    .font(.system(size: 12, design: .rounded))
+                    .foregroundStyle(.tertiary)
+
                 Spacer()
-                
+
                 if alertCase.helpersAssigned > 0 {
-                    HStack(spacing: 4) {
-                        Image(systemName: "person.2.fill")
-                            .font(.system(size: 11))
-                        Text("\(alertCase.helpersAssigned) helping")
-                            .font(.system(size: 12, weight: .medium, design: .rounded))
-                    }
-                    .foregroundStyle(Color(red: 0.2, green: 0.7, blue: 0.4))
+                    Label("\(alertCase.helpersAssigned) helping", systemImage: "person.2.fill")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.green)
                 }
             }
         }
         .padding(16)
         .background {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.white)
-                .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 4)
+                .fill(.background)
+                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 2)
         }
     }
-    
-    private func urgencyColor(_ urgency: AlertCase.Urgency) -> Color {
-        switch urgency {
-        case .critical: return Color(red: 1.0, green: 0.3, blue: 0.3)
-        case .high: return Color(red: 1.0, green: 0.6, blue: 0.2)
-        case .moderate: return Color(red: 1.0, green: 0.8, blue: 0.2)
-        case .low: return Color(red: 0.3, green: 0.6, blue: 1.0)
-        }
-    }
-    
+
     private func timeAgo(from date: Date) -> String {
         let seconds = Date().timeIntervalSince(date)
         let minutes = Int(seconds / 60)
         let hours = Int(seconds / 3600)
-        
-        if hours > 0 {
-            return "\(hours)h ago"
-        } else if minutes > 0 {
-            return "\(minutes)m ago"
-        } else {
-            return "Just now"
-        }
+        if hours > 0 { return "\(hours)h ago" }
+        if minutes > 0 { return "\(minutes)m ago" }
+        return "Just now"
     }
 }
 
-struct CreateAlertPlaceholder: View {
-    var body: some View {
-        ZStack {
-            Color(red: 0.98, green: 0.97, blue: 0.96)
-                .ignoresSafeArea()
-            
-            VStack(spacing: 24) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 70))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 1.0, green: 0.45, blue: 0.3),
-                                Color(red: 1.0, green: 0.55, blue: 0.4)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                
-                VStack(spacing: 10) {
-                    Text("Report a Case")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color(red: 0.3, green: 0.25, blue: 0.25))
-                    
-                    Text("Help someone in need by creating an alert")
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
-                        .foregroundStyle(Color(red: 0.55, green: 0.5, blue: 0.5))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                }
-                
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Image(systemName: "info.circle.fill")
-                            .foregroundStyle(Color(red: 1.0, green: 0.5, blue: 0.35))
-                        Text("Coming Soon")
-                            .font(.system(size: 17, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Color(red: 0.3, green: 0.25, blue: 0.25))
-                    }
-                    
-                    Text("Form to report new cases with location, photos, and needs")
-                        .font(.system(size: 14, design: .rounded))
-                        .foregroundStyle(Color(red: 0.55, green: 0.5, blue: 0.5))
-                }
-                .padding(20)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(.white)
-                        .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 4)
-                }
-                .padding(.horizontal, 32)
-            }
-        }
-    }
-}
+// MARK: - Create Alert View
+struct CreateAlertView: View {
+    @Environment(\.dismiss) private var dismiss
 
-struct ProfilePlaceholder: View {
+    @State private var personName = ""
+    @State private var description = ""
+    @State private var selectedNeeds: Set<Need> = []
+    @State private var selectedUrgency: AlertCase.Urgency = .moderate
+    @State private var address = ""
+    @State private var showSubmitConfirmation = false
+
+    private var isValid: Bool {
+        !description.trimmingCharacters(in: .whitespaces).isEmpty &&
+        !selectedNeeds.isEmpty &&
+        !address.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color(red: 0.98, green: 0.97, blue: 0.96)
-                    .ignoresSafeArea()
-                
-                VStack(spacing: 28) {
-                    // Profile avatar
-                    ZStack {
-                        Circle()
-                            .fill(
-                                RadialGradient(
-                                    colors: [
-                                        Color.orange.opacity(0.2),
-                                        Color.orange.opacity(0.05),
-                                        Color.clear
-                                    ],
-                                    center: .center,
-                                    startRadius: 40,
-                                    endRadius: 80
-                                )
-                            )
-                            .frame(width: 160, height: 160)
-                        
-                        Image(systemName: "person.circle.fill")
-                            .font(.system(size: 90))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [
-                                        Color(red: 1.0, green: 0.45, blue: 0.3),
-                                        Color(red: 1.0, green: 0.55, blue: 0.4)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .background {
-                                Circle()
-                                    .fill(.white)
-                                    .frame(width: 110, height: 110)
-                                    .shadow(color: .black.opacity(0.08), radius: 20, x: 0, y: 10)
+            ScrollView {
+                VStack(spacing: 20) {
+
+                    // Person name (optional)
+                    FormSection(title: "Who needs help?") {
+                        TextField("Name or description (optional)", text: $personName)
+                            .font(.system(size: 15, design: .rounded))
+                            .padding(12)
+                            .background(Color(.secondarySystemGroupedBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    }
+
+                    // Description (required)
+                    FormSection(title: "Describe the situation *") {
+                        ZStack(alignment: .topLeading) {
+                            if description.isEmpty {
+                                Text("What did you observe? The more detail, the better.")
+                                    .font(.system(size: 15, design: .rounded))
+                                    .foregroundStyle(.tertiary)
+                                    .padding(12)
                             }
+                            TextEditor(text: $description)
+                                .font(.system(size: 15, design: .rounded))
+                                .frame(minHeight: 90)
+                                .padding(8)
+                                .scrollContentBackground(.hidden)
+                        }
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     }
-                    
-                    VStack(spacing: 8) {
-                        Text("Your Profile")
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color(red: 0.3, green: 0.25, blue: 0.25))
-                        
-                        Text("Track your impact and manage settings")
-                            .font(.system(size: 15, weight: .medium, design: .rounded))
-                            .foregroundStyle(Color(red: 0.55, green: 0.5, blue: 0.5))
+
+                    // Location (required)
+                    FormSection(title: "Location *") {
+                        TextField("Street address or landmark", text: $address)
+                            .font(.system(size: 15, design: .rounded))
+                            .padding(12)
+                            .background(Color(.secondarySystemGroupedBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     }
-                    
-                    // Stats
-                    HStack(spacing: 14) {
-                        VStack(spacing: 6) {
-                            Text("12")
-                                .font(.system(size: 26, weight: .bold, design: .rounded))
-                                .foregroundStyle(Color(red: 0.3, green: 0.25, blue: 0.25))
-                            Text("Helped")
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
-                                .foregroundStyle(Color(red: 0.55, green: 0.5, blue: 0.5))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        .background {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(.white)
-                                .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 4)
-                        }
-                        
-                        VStack(spacing: 6) {
-                            Text("5")
-                                .font(.system(size: 26, weight: .bold, design: .rounded))
-                                .foregroundStyle(Color(red: 0.3, green: 0.25, blue: 0.25))
-                            Text("Ongoing")
-                                .font(.system(size: 12, weight: .medium, design: .rounded))
-                                .foregroundStyle(Color(red: 0.55, green: 0.5, blue: 0.5))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        .background {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(.white)
-                                .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 4)
+
+                    // Urgency
+                    FormSection(title: "Urgency level") {
+                        HStack(spacing: 8) {
+                            ForEach(AlertCase.Urgency.allCases, id: \.self) { urgency in
+                                Button {
+                                    selectedUrgency = urgency
+                                } label: {
+                                    Text(urgency.rawValue)
+                                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                        .foregroundStyle(selectedUrgency == urgency ? .white : .primary)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 8)
+                                        .frame(maxWidth: .infinity)
+                                        .background {
+                                            Capsule()
+                                                .fill(selectedUrgency == urgency
+                                                      ? urgency.accentColor
+                                                      : Color(.secondarySystemGroupedBackground))
+                                        }
+                                }
+                                .buttonStyle(.plain)
+                                .animation(.spring(duration: 0.2), value: selectedUrgency)
+                            }
                         }
                     }
-                    .padding(.horizontal, 32)
+
+                    // Needs (required)
+                    FormSection(title: "What do they need? *") {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                            ForEach(Need.allCases, id: \.self) { need in
+                                Button {
+                                    if selectedNeeds.contains(need) {
+                                        selectedNeeds.remove(need)
+                                    } else {
+                                        selectedNeeds.insert(need)
+                                    }
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: need.icon)
+                                            .font(.system(size: 14))
+                                            .foregroundStyle(selectedNeeds.contains(need) ? .white : .secondary)
+                                        Text(need.rawValue)
+                                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                                            .foregroundStyle(selectedNeeds.contains(need) ? .white : .primary)
+                                        Spacer()
+                                    }
+                                    .padding(12)
+                                    .background {
+                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                            .fill(selectedNeeds.contains(need)
+                                                  ? Color.primary
+                                                  : Color(.secondarySystemGroupedBackground))
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                .animation(.spring(duration: 0.2), value: selectedNeeds)
+                            }
+                        }
+                    }
+                }
+                .padding()
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("Report a Case")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
                 }
             }
+            .safeAreaInset(edge: .bottom) {
+                Button(action: { showSubmitConfirmation = true }) {
+                    HStack {
+                        Image(systemName: "paperplane.fill")
+                        Text("Submit Report")
+                    }
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.glassProminent)
+                .disabled(!isValid)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 8)
+                .padding(.top, 8)
+            }
+            .alert("Report Submitted", isPresented: $showSubmitConfirmation) {
+                Button("Done") { dismiss() }
+            } message: {
+                Text("Thank you for reporting. Nearby volunteers will be notified.")
+            }
+        }
+    }
+}
+
+// MARK: - Form Section Helper
+struct FormSection<Content: View>: View {
+    let title: String
+    let content: Content
+
+    init(title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+            content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - Profile View
+struct ProfileView: View {
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 28) {
+                    // Avatar
+                    ZStack {
+                        Circle()
+                            .fill(.quaternary)
+                            .frame(width: 100, height: 100)
+
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 46))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.top, 16)
+
+                    // Stats
+                    GlassEffectContainer(spacing: 20) {
+                        HStack(spacing: 1) {
+                            ProfileStat(value: "12", label: "Helped")
+                            Divider().frame(height: 32).opacity(0.3)
+                            ProfileStat(value: "5", label: "Ongoing")
+                            Divider().frame(height: 32).opacity(0.3)
+                            ProfileStat(value: "3", label: "Reported")
+                        }
+                        .padding(.vertical, 16)
+                        .padding(.horizontal, 8)
+                        .glassEffect(in: .rect(cornerRadius: 18))
+                    }
+                    .padding(.horizontal, 24)
+                }
+            }
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.large)
         }
+    }
+}
+
+struct ProfileStat: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .foregroundStyle(.primary)
+            Text(label)
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 
