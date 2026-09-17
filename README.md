@@ -1,4 +1,4 @@
-# The Warmth
+# Our Warmth (renamed from theWarmth)
 
 A community alert application for iOS that connects people in need with local volunteers. The Warmth enables community members to report vulnerable individuals—particularly elderly people facing homelessness—and coordinate immediate, dignified assistance for necessities such as food, water, blankets, and medical care.
 
