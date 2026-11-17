@@ -1,6 +1,6 @@
 //
 //  GlassButton.swift
-//  TheWarmth
+//  Our Warmth
 //
 //  Reusable Liquid Glass button component
 //

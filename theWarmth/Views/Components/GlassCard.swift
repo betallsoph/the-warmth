@@ -1,6 +1,6 @@
 //
 //  GlassCard.swift
-//  TheWarmth
+//  Our Warmth
 //
 //  Reusable Liquid Glass card component
 //
