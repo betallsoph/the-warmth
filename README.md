@@ -153,7 +153,7 @@ flowchart LR
 | Networking | None. No `URLSession` client. |
 | Persistence on the live path | SwiftData on disk: `AlertCase`, `UserProfile`, `UserActivity` |
 | Seed data | Twelve mock cases, written once when the store is empty |
-| Location | MapKit map with `MapUserLocationButton`. No `CLLocationManager` of its own, and no location usage description yet (see Known gaps). |
+| Location | MapKit map with `MapUserLocationButton`, backed by `INFOPLIST_KEY_NSLocationWhenInUseUsageDescription` in both configurations. No `CLLocationManager` of its own. |
 | Tests | No test target |
 | CI | No workflows |
 | Shared scheme | Not committed. Xcode generates the `theWarmth` scheme locally. |
@@ -260,7 +260,6 @@ The things that are wired in the UI but not finished underneath, kept here so no
 
 | Gap | Detail |
 |-----|--------|
-| No location usage description | The map shows `MapUserLocationButton`, but neither `Info.plist` nor the generated plist keys declare `NSLocationWhenInUseUsageDescription`, so the permission prompt cannot appear. |
 | Two different bundle IDs | Debug signs as `com.antt.thwarmth`, Release as `com.antran.ourwarmth`. The Debug one is also missing a letter. They install as two separate apps with separate stores. |
 | Clustering declared, not rendered | `CaseMarkerView` and `ClusterAnnotationView` are written but nothing uses them; the map draws plain `Marker`s. |
 | Face blur is device-only | Vision's neural engine is unavailable on the simulator, so `FaceBlurProcessor` returns the original image there. Test this feature on a real device. |
@@ -268,7 +267,7 @@ The things that are wired in the UI but not finished underneath, kept here so no
 | No push, no backend | Push and CloudKit entitlements were removed rather than left signed and unused. Nothing leaves the device. |
 | No tests, no CI | There is no test target and no workflow. |
 
-**Tiếng Việt.** Mấy chỗ đã có trên giao diện nhưng chưa xong bên dưới: chưa khai quyền vị trí nên nút vị trí trên bản đồ không xin quyền được; bundle ID Debug và Release khác nhau và bản Debug thiếu một chữ cái; view gom cụm marker đã viết nhưng chưa dùng; làm mờ mặt chỉ chạy trên máy thật, simulator trả về ảnh gốc; `ContentView` và `Item` vẫn là template; chưa có push, backend, test hay CI.
+**Tiếng Việt.** Mấy chỗ đã có trên giao diện nhưng chưa xong bên dưới: bundle ID Debug và Release khác nhau và bản Debug thiếu một chữ cái; view gom cụm marker đã viết nhưng chưa dùng; làm mờ mặt chỉ chạy trên máy thật, simulator trả về ảnh gốc; `ContentView` và `Item` vẫn là template; chưa có push, backend, test hay CI.
 
 ## Getting started
 

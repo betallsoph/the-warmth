@@ -152,6 +152,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = theWarmth/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Our Warmth";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Our Warmth uses your location to centre the map on where you are, so you can see the cases reported near you.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -188,6 +189,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = theWarmth/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Our Warmth";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Our Warmth uses your location to centre the map on where you are, so you can see the cases reported near you.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
